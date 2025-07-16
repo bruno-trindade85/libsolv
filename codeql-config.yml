@@ -1,0 +1,4 @@
+# codeql-config.yml
+queries:
+  - uses: +cpp-queries
+  - uses: ./codeql-custom-models/solv_chksum_create_alloc.qll
