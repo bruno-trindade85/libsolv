@@ -1,4 +1,5 @@
 name: CodeQL LLM-Annotated Analysis
+# Pequena alteração para forçar novo workflow
 
 on:
   push:
