@@ -1,0 +1,55 @@
+name: CodeQL LLM-Annotated Analysis
+
+on:
+  push:
+    branches: [ "experiment/llm-annotated-leak" ] # Dispara quando há um push para este NOVO branch
+  pull_request:
+    branches: [ "experiment/llm-annotated-leak" ] # Dispara quando há um PR para este NOVO branch
+  workflow_dispatch: # Permite acionar manualmente
+
+jobs:
+  analyze:
+    name: Analyze with LLM Annotations
+    runs-on: ubuntu-latest # O sistema operacional do runner
+
+    permissions:
+      security-events: write # Permissão necessária para carregar resultados SARIF
+      actions: read
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.repository }}
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    # Instala dependências de build para libsolv
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake autoconf libtool pkg-config zlib1g-dev libbz2-dev liblzma-dev
+
+    # Inicializa o CodeQL CLI
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+
+    # Realiza o build do projeto para que o CodeQL possa monitorar a compilação
+    - name: Build libsolv
+      run: |
+        mkdir build
+        cd build
+        cmake ..
+        make -j$(nproc)
+
+    # Executa as queries do CodeQL, incluindo seu modelo personalizado
+    - name: Perform CodeQL Analysis with LLM Annotations
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "libsolv-llm-annotated" # Categoria diferente para estes resultados
+        # Especifica as queries a serem executadas
+        queries: |
+          +cpp-queries # Inclui as queries padrão de C++ (incluindo MemoryLeak)
+          ./codeql-custom-models/solv_chksum_create_alloc.qll # Seu arquivo de anotação
