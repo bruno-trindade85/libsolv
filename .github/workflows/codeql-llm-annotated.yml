@@ -1,20 +1,19 @@
 name: CodeQL LLM-Annotated Analysis
-# Pequena alteração para forçar novo workflow
 
 on:
   push:
-    branches: [ "experiment/llm-annotated-leak" ] # Dispara quando há um push para este NOVO branch
+    branches: [ "experiment/llm-annotated-leak" ]
   pull_request:
-    branches: [ "experiment/llm-annotated-leak" ] # Dispara quando há um PR para este NOVO branch
-  workflow_dispatch: # Permite acionar manualmente
+    branches: [ "experiment/llm-annotated-leak" ]
+  workflow_dispatch:
 
 jobs:
   analyze:
     name: Analyze with LLM Annotations
-    runs-on: ubuntu-latest # O sistema operacional do runner
+    runs-on: ubuntu-latest
 
     permissions:
-      security-events: write # Permissão necessária para carregar resultados SARIF
+      security-events: write
       actions: read
       contents: read
 
@@ -25,7 +24,6 @@ jobs:
         repository: ${{ github.repository }}
         ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
-    # Instala dependências de build para libsolv
     - name: Install build dependencies
       run: |
         sudo apt-get update
@@ -36,8 +34,9 @@ jobs:
       uses: github/codeql-action/init@v3
       with:
         languages: cpp
+        # Remova a linha 'config-file: ./codeql-config.yml' daqui
+        # Apenas 'languages: cpp'
 
-    # Realiza o build do projeto para que o CodeQL possa monitorar a compilação
     - name: Build libsolv
       run: |
         mkdir build
@@ -45,12 +44,17 @@ jobs:
         cmake ..
         make -j$(nproc)
 
-    # Executa as queries do CodeQL, incluindo seu modelo personalizado
+    # Executa as queries do CodeQL, incluindo seu modelo personalizado.
+    # Agora vamos passar o diretório das queries personalizadas diretamente para 'queries'.
+    # O CodeQL Action é geralmente inteligente o suficiente para incluir as queries padrão
+    # quando você especifica um idioma no 'init' e depois adiciona caminhos no 'analyze'.
     - name: Perform CodeQL Analysis with LLM Annotations
       uses: github/codeql-action/analyze@v3
       with:
-        category: "libsolv-llm-annotated" # Categoria diferente para estes resultados
-        # Especifica as queries a serem executadas
-        queries: |
-          +cpp-queries # Inclui as queries padrão de C++ (incluindo MemoryLeak)
-          ./codeql-custom-models/solv_chksum_create_alloc.qll # Seu arquivo de anotação
+        category: "libsolv-llm-annotated"
+        # Adicionando o diretório que contém a sua query .qll.
+        # O '.' no início é importante para caminhos relativos.
+        queries: ./codeql-custom-models/
+        # Se isso ainda der o erro 'Unexpected input(s) queries',
+        # significa que há algo muito errado com a versão do CodeQL Action
+        # ou com o repositório.
